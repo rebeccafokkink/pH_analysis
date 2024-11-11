@@ -3,6 +3,7 @@
 
 # import some packages
 import pandas as pd
+import numpy as np
 
 # load the file
 veg_data = pd.read_csv('veg_data.csv')
@@ -19,13 +20,10 @@ veg_data['species_richness'] = veg_data['plot_id'].map(species_richness)
 # Split 'plot_id' into separate columns: field_code, grassland_type, and restoration_measure
 veg_data[['field_code', 'grassland_type', 'restoration_measure', 'plot_number']] = veg_data['plot_id'].str.split('_', expand=True)
 
-# Select only the columns you need
-veg_data = veg_data[['field_code', 'plot_number', 'grassland_type', 'restoration_measure', 'gen_sp', 'cover', 'species_richness']]
-
 # Define a function to generate site_IDs based on field_code and restoration_measure
 def generate_site_id(row):
     # Use original 'restoration_measure' values in site_ID to preserve original data
-    return f"{row['field_code']}_{row['restoration_measure']}"
+    return f"{row['field_code']}_{row['restoration_measure']}_{row['plot_number']}"
 
 # Apply the function to create the initial 'site_ID' column
 veg_data['site_ID'] = veg_data.apply(generate_site_id, axis=1)
@@ -52,8 +50,30 @@ cover_mapping = {
     '5': 87.5
 }
 
-# Apply the mapping to create a new 'cover_%' column
-veg_data['cover_%'] = veg_data['cover'].map(cover_mapping)
+# Apply the mapping to create a new 'cover_%' column with values as integers
+veg_data['cover_%'] = veg_data['cover'].map(cover_mapping).astype(int)
+
+# Define the function to calculate Shannon-Wiener index
+def shannon_wiener_index(group):
+    # Calculate the total cover for each group (site_id)
+    total_cover = group['cover_%'].sum()
+
+    # Calculate the proportion of each species' cover relative to the total cover
+    proportions = group['cover_%'] / total_cover
+
+    # Calculate the Shannon-Wiener index: H' = -Σ (p_i * ln(p_i))
+    shannon_index = - (proportions * proportions.apply(np.log)).sum()
+
+    return shannon_index
+
+# Calculate Shannon-Wiener index for each site_ID
+shannon_results = veg_data.groupby('site_ID').apply(shannon_wiener_index).reset_index(name='shannon_index')
+
+# Merge the results back to the original dataset if needed
+veg_data = pd.merge(veg_data, shannon_results, on='site_ID', how='left')
+
+# Select only the columns you need
+veg_data = veg_data[['site_ID', 'grassland_type', 'restoration_measure', 'gen_sp', 'species_richness', 'cover_%', 'shannon_index']]
 
 # Save the updated DataFrame to a new CSV file
 veg_data.to_csv('updated_veg_data.csv', index=False)
