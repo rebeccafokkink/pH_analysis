@@ -10,13 +10,10 @@ ph_data = pd.read_csv('data.csv')
 # Split 'plot_ID' into separate columns: field_code, grassland_type, and restoration_measure
 ph_data[['field_code', 'grassland_type', 'restoration_measure', 'plot_number']] = ph_data['Plot_ID'].str.split('_', expand=True)
 
-# Select only the columns you need
-ph_data = ph_data[['field_code', 'plot_number', 'grassland_type', 'restoration_measure', 'depth', 'pH']]
-
 # Define a function to generate site_IDs based on field_code and restoration_measure
 def generate_site_id(row):
     # Use original 'restoration_measure' values in site_ID to preserve original data
-    return f"{row['field_code']}_{row['restoration_measure']}"
+    return f"{row['field_code']}_{row['restoration_measure']}_{row['plot_number']}"
 
 # Apply the function to create the initial 'site_ID' column
 ph_data['site_ID'] = ph_data.apply(generate_site_id, axis=1)
@@ -30,5 +27,8 @@ ph_data.loc[(ph_data['grassland_type'] == 'H') & (ph_data['restoration_measure']
 # Filter out rows where 'restoration_measure' is 'M'
 ph_data = ph_data[ph_data['restoration_measure'] != 'M']
 
+# Select only the columns you need
+ph_data = ph_data[['site_ID', 'grassland_type', 'restoration_measure', 'depth', 'pH']]
+
 # Save the updated DataFrame to a new CSV file
-ph_data.to_csv('updated_dataset.csv', index=False)
+ph_data.to_csv('updated_ph_data.csv', index=False)
