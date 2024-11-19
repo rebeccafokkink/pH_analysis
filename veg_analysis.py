@@ -55,7 +55,7 @@ veg_data['cover_%'] = veg_data['cover'].map(cover_mapping).astype(int)
 
 # Define the function to calculate Shannon-Wiener index
 def shannon_wiener_index(group):
-    # Calculate the total cover for each group (site_id)
+    # Calculate the total cover for each plot (site_id)
     total_cover = group['cover_%'].sum()
 
     # Calculate the proportion of each species' cover relative to the total cover
@@ -67,13 +67,22 @@ def shannon_wiener_index(group):
     return shannon_index
 
 # Calculate Shannon-Wiener index for each site_ID
-shannon_results = veg_data.groupby('site_ID').apply(shannon_wiener_index).reset_index(name='shannon_index')
+shannon_results = veg_data.groupby('site_ID').apply(shannon_wiener_index).reset_index(name='shannon_index').round(2)
 
-# Merge the results back to the original dataset if needed
+# Merge the results back to the original dataset
 veg_data = pd.merge(veg_data, shannon_results, on='site_ID', how='left')
 
 # Select only the columns you need
-veg_data = veg_data[['site_ID', 'grassland_type', 'restoration_measure', 'gen_sp', 'species_richness', 'cover_%', 'shannon_index']]
+veg_data = veg_data[['site_ID', 'grassland_type', 'restoration_measure', 'species_richness', 'shannon_index']]
+
+# Group by plot-level identifiers and keep one row per unique plot
+veg_data = veg_data.groupby(
+    ['site_ID', 'grassland_type', 'restoration_measure'], as_index=False
+).agg({
+    'species_richness': 'first',  # Retain the first value for species richness
+    'shannon_index': 'first'     # Retain the first value for Shannon index
+})
+
 
 # Save the updated DataFrame to a new CSV file
 veg_data.to_csv('updated_veg_data.csv', index=False)
